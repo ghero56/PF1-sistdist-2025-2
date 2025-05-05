@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify #, render_template_string
 import threading
 import time
 import requests
@@ -27,16 +27,24 @@ def receive_message():
     data = request.json
     print(f"[{data['timestamp']}] {data['sender']}: {data['message']}")
     log_message(data)
-    # Send back "received" ack
-    threading.Thread(target=send_ack, args=(request.remote_addr, data['sender'])).start()
+
+    # Solo responder con Ack si el mensaje NO es un Ack
+    if not data['message'].startswith("Ack"):
+        threading.Thread(target=send_ack, args=(request.remote_addr, data['sender'])).start()
+    # O si es un tipo ack
+    if data['type'] == "ack":
+        threading.Thread(target=send_ack, args=(request.remote_addr, data['sender'])).start()
+
     return jsonify({"status": "received"})
+
 
 def send_ack(ip, sender):
     try:
         requests.post(f"http://{ip}:{PORT}/message", json={
             "timestamp": datetime.now().isoformat(),
             "sender": NODE_NAME,
-            "message": f"Ack: recibido tu mensaje ({sender})"
+            "message": f"Ack: recibido tu mensaje ({sender})",
+            "type": "ack"
         }, timeout=2)
     except:
         pass
@@ -55,6 +63,7 @@ def scan_network():
             print(f"[+] Nodo encontrado: {name} en {ip}")
         except:
             pass
+    print("Escaneo completo:", NODE_LIST)
 
 def sender_thread():
     while True:
@@ -84,8 +93,8 @@ def run_flask():
     app.run(host="0.0.0.0", port=PORT, debug=False, use_reloader=False)
 
 if __name__ == "__main__":
-    print(f"🟢 Nodo iniciado: {NODE_NAME} ({NODE_IP})")
-    print(f"📄 Log: {LOG_FILE}")
+    print(f"Nodo iniciado: {NODE_NAME} ({NODE_IP})")
+    print(f"Log: {LOG_FILE}")
 
     threading.Thread(target=run_flask, daemon=True).start()
     time.sleep(1)
