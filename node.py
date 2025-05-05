@@ -32,7 +32,7 @@ def receive_message():
     if not data['message'].startswith("Ack"):
         threading.Thread(target=send_ack, args=(request.remote_addr, data['sender'])).start()
     # O si es un tipo ack
-    if data['type'] == "ack":
+    if not data['type'] == "ack":
         threading.Thread(target=send_ack, args=(request.remote_addr, data['sender'])).start()
 
     return jsonify({"status": "received"})
