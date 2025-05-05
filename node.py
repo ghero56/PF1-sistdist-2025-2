@@ -25,7 +25,7 @@ def ping():
 @app.route("/message", methods=["POST"])
 def receive_message():
     data = request.json
-    print(f"[{data['timestamp']}] {data['sender']}: {data['message']}")
+    print(f"\n[{data['timestamp']}] {data['sender']}: {data['message']}")
     log_message(data)
 
     # Solo responder con Ack si el mensaje NO es un Ack
@@ -35,7 +35,7 @@ def receive_message():
     if not data['type'] == "ack":
         threading.Thread(target=send_ack, args=(request.remote_addr, data['sender'])).start()
     
-    print(f"[✔] Mensaje recibido de {data['sender']} ({NODE_LIST.get(data['sender'])}): {data['message']}")
+    # print(f"[✔] Mensaje recibido de {data['sender']} ({NODE_LIST.get(data['sender'])}): {data['message']}")
 
     return jsonify({"status": "received"})
 
