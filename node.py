@@ -34,6 +34,8 @@ def receive_message():
     # O si es un tipo ack
     if not data['type'] == "ack":
         threading.Thread(target=send_ack, args=(request.remote_addr, data['sender'])).start()
+    
+    print(f"[✔] Mensaje recibido de {data['sender']} ({NODE_LIST.get(data['sender'])}): {data['message']}")
 
     return jsonify({"status": "received"})
 
@@ -78,7 +80,8 @@ def sender_thread():
                 data = {
                     "timestamp": datetime.now().isoformat(),
                     "sender": NODE_NAME,
-                    "message": msg
+                    "message": msg,
+                    "type": "message" # Tipo de mensaje
                 }
                 res = requests.post(f"http://{ip}:{PORT}/message", json=data, timeout=2)
                 log_message({"sent_to": name, **data})
