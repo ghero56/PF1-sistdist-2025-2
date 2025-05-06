@@ -3,9 +3,11 @@ import threading
 import time
 import requests
 import json
-import os
+import os, glob
 from datetime import datetime
 from utils import get_ip, generate_name
+
+LOG_DIR = "."
 
 PORT = 8080
 app = Flask(__name__)
@@ -43,6 +45,18 @@ HTML_PAGE = """
     </form>
 
     <h2>Log de Mensajes</h2>
+    <form method="GET" action="/">
+        <label>Ver log de nodo:</label>
+        <select name="log" onchange="this.form.submit()">
+            <option value="">-- Selecciona un nodo --</option>
+            {% for node, file in logs.items() %}
+                <option value="{{ node }}" {% if node == selected_log %}selected{% endif %}>
+                    {{ node }}
+                </option>
+            {% endfor %}
+        </select>
+    </form>
+
     <pre>{{ log }}</pre>
 </body>
 </html>
@@ -50,15 +64,18 @@ HTML_PAGE = """
 
 # Ruta principal
 @app.route("/")
-def index():
-    # Leer log.txt
-    try:
-        with open("log.txt", "r") as f:
-            log_content = f.read()
-    except FileNotFoundError:
-        log_content = "Sin mensajes todavía."
+def home():
+    logs = get_log_files()
+    selected_log = request.args.get("log")
+    log_content = read_log(logs[selected_log]) if selected_log in logs else "Selecciona un log..."
+    return render_template_string(
+        HTML_PAGE, 
+        nodes=NODE_LIST, 
+        logs=logs, 
+        selected_log=selected_log, 
+        log=log_content
+    )
 
-    return render_template_string(HTML_PAGE, nodes=NODE_LIST, log=log_content)
 
 @app.route("/ping", methods=["GET"])
 def ping():
@@ -102,6 +119,24 @@ def send_from_web():
 def scan_from_web():
     scan_network()
     return redirect("/")
+
+# Fin de las rutas
+
+def get_log_files():
+    """Obtiene los archivos de log como diccionario {nombre_nodo: nombre_archivo}"""
+    logs = {}
+    for path in glob.glob(os.path.join(LOG_DIR, "log_Node-*.txt")):
+        filename = os.path.basename(path)
+        node_name = filename.replace("log_Node-", "").replace(".txt", "")
+        logs[node_name] = filename
+    return logs
+
+def read_log(filename):
+    try:
+        with open(os.path.join(LOG_DIR, filename), "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return "Log no encontrado."
 
 def send_ack(ip, sender):
     try:
