@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify #, render_template_string
+from flask import Flask, request, jsonify, render_template_string, redirect
 import threading
 import time
 import requests
@@ -17,6 +17,48 @@ LOG_FILE = f"log_{NODE_NAME}.txt"
 def log_message(data):
     with open(LOG_FILE, "a") as f:
         f.write(json.dumps(data) + "\n")
+
+HTML_PAGE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Red de Nodos</title>
+</head>
+<body>
+    <h1>Enviar Mensaje</h1>
+    <form method="POST" action="/send">
+        <label>Destino:</label>
+        <select name="target_ip">
+            {% for ip, name in nodes.items() %}
+                <option value="{{ ip }}">{{ name }} ({{ ip }})</option>
+            {% endfor %}
+        </select><br><br>
+        <label>Mensaje:</label>
+        <input type="text" name="message" required><br><br>
+        <button type="submit">Enviar</button>
+    </form>
+
+    <form method="POST" action="/scan" style="margin-top: 20px;">
+        <button type="submit">🔍 Escanear Nodos</button>
+    </form>
+
+    <h2>Log de Mensajes</h2>
+    <pre>{{ log }}</pre>
+</body>
+</html>
+"""
+
+# Ruta principal
+@app.route("/")
+def index():
+    # Leer log.txt
+    try:
+        with open("log.txt", "r") as f:
+            log_content = f.read()
+    except FileNotFoundError:
+        log_content = "Sin mensajes todavía."
+
+    return render_template_string(HTML_PAGE, nodes=NODE_LIST, log=log_content)
 
 @app.route("/ping", methods=["GET"])
 def ping():
@@ -39,6 +81,10 @@ def receive_message():
 
     return jsonify({"status": "received"})
 
+@app.route("/scan", methods=["POST"])
+def scan_from_web():
+    scan_network()
+    return redirect("/")
 
 def send_ack(ip, sender):
     try:
