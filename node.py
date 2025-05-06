@@ -81,6 +81,23 @@ def receive_message():
 
     return jsonify({"status": "received"})
 
+@app.route("/send", methods=["POST"])
+def send_from_web():
+    ip = request.form["target_ip"]
+    message = request.form["message"]
+    timestamp = datetime.now().isoformat()
+
+    try:
+        requests.post(f"http://{ip}:{PORT}/message", json={
+            "timestamp": timestamp,
+            "sender": NODE_NAME,
+            "message": message,
+            "type": "user"
+        }, timeout=2)
+        return f"<p>Mensaje enviado a {NODE_LIST[ip]} ({ip})</p><a href='/'>Volver</a>"
+    except requests.exceptions.RequestException:
+        return f"<p>Error al enviar a {ip}</p><a href='/'>Volver</a>"
+
 @app.route("/scan", methods=["POST"])
 def scan_from_web():
     scan_network()
